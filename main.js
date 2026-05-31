@@ -8,7 +8,7 @@ const redirectUri = window.location.origin + repoBasePath;
 
 // Nur diese Benutzer dürfen die Tools sehen
 const allowedUsers = [
-  "pete.adler@vodafone.com",
+  "peter.adler@vodafone.com",
   "stefanie.adler@vodafone.com"
   "martin.elstnerr@vodafone.com"
 ].map(x => x.trim().toLowerCase());
