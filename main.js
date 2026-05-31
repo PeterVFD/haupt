@@ -8,9 +8,8 @@ const redirectUri = window.location.origin + repoBasePath;
 
 // Nur diese Benutzer dürfen die Tools sehen
 const allowedUsers = [
-  "peter.adler@vodafone.com",
-  "stefanie.adler@vodafone.com"
-  "martin.elstnerr@vodafone.com"
+  "vorname.nachname@firma.de",
+  "team.user@firma.de"
 ].map(x => x.trim().toLowerCase());
 
 // Optional: ganze Domäne erlauben
@@ -34,9 +33,6 @@ const loginRequest = {
   scopes: ["openid", "profile", "email", "User.Read"]
 };
 
-// =====================================
-// MSAL INITIALISIEREN
-// =====================================
 const msalInstance = new PublicClientApplication(msalConfig);
 
 // =====================================
@@ -81,7 +77,7 @@ function isAllowedAccount(account) {
     return true;
   }
 
-  // Optional: ganze Domäne erlauben
+  // Optional:
   // const domain = username.split("@")[1] || "";
   // if (allowedDomains.includes(domain)) {
   //   return true;
@@ -140,26 +136,24 @@ async function evaluateAccess() {
 
 async function initializeApp() {
   try {
-    console.log("INIT gestartet");
+    console.log("Initialisierung gestartet");
 
     await msalInstance.initialize();
     console.log("MSAL initialisiert");
 
-    const response = await msalInstance.handleRedirectPromise();
-    console.log("Redirect verarbeitet:", response);
+    const redirectResponse = await msalInstance.handleRedirectPromise();
+    console.log("Redirect Response:", redirectResponse);
 
     const accounts = msalInstance.getAllAccounts();
-    console.log("Accounts gefunden:", accounts);
+    console.log("Accounts:", accounts);
 
     await evaluateAccess();
-
   } catch (error) {
-    console.error("FEHLER:", error);
-    setStatus("Fehler bei Anmeldung", true);
+    console.error("Initialisierungsfehler:", error);
+    setStatus("Fehler bei der Initialisierung der Anmeldung.", true);
     showLoggedOutState();
   }
 }
-
 
 loginBtn.addEventListener("click", async () => {
   try {
