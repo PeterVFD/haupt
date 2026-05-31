@@ -3,13 +3,14 @@ import { PublicClientApplication } from "@azure/msal-browser";
 // =====================================
 // ANPASSEN
 // =====================================
-const repoBasePath = "/REPO-NAME/"; // z. B. "/mein-login-hub/"
+const repoBasePath = "/haupt/"; // z. B. "/mein-login-hub/"
 const redirectUri = window.location.origin + repoBasePath;
 
 // Nur diese Benutzer dürfen die Tools sehen
 const allowedUsers = [
-  "vorname.nachname@firma.de",
-  "team.user@firma.de"
+  "pete.adler@vodafone.com",
+  "stefanie.adler@vodafone.com"
+  "martin.elstnerr@vodafone.com"
 ].map(x => x.trim().toLowerCase());
 
 // Optional: ganze Domäne erlauben
