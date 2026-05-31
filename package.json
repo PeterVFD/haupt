@@ -1,0 +1,15 @@
+{
+  "name": "mein-login-hub",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "^5.11.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
