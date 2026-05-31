@@ -140,15 +140,26 @@ async function evaluateAccess() {
 
 async function initializeApp() {
   try {
+    console.log("INIT gestartet");
+
     await msalInstance.initialize();
-    await msalInstance.handleRedirectPromise();
+    console.log("MSAL initialisiert");
+
+    const response = await msalInstance.handleRedirectPromise();
+    console.log("Redirect verarbeitet:", response);
+
+    const accounts = msalInstance.getAllAccounts();
+    console.log("Accounts gefunden:", accounts);
+
     await evaluateAccess();
+
   } catch (error) {
-    console.error(error);
-    setStatus("Fehler bei der Initialisierung der Anmeldung.", true);
+    console.error("FEHLER:", error);
+    setStatus("Fehler bei Anmeldung", true);
     showLoggedOutState();
   }
 }
+
 
 loginBtn.addEventListener("click", async () => {
   try {
