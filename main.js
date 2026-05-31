@@ -3,7 +3,7 @@ import { PublicClientApplication } from "@azure/msal-browser";
 // =====================================
 // ANPASSEN
 // =====================================
-const repoBasePath = "/haupt/"; // z. B. "/mein-login-hub/"
+const repoBasePath = "/haupt/";
 const redirectUri = window.location.origin + repoBasePath;
 
 // Nur diese Benutzer dürfen die Tools sehen
