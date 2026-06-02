@@ -19,7 +19,7 @@
     }
 
     .overlay {
-      background: rgba(255, 255, 255, 0.75);
+      background: rgba(255, 255, 255, 0.78);
       min-height: 100vh;
       padding: 30px 20px;
       box-sizing: border-box;
@@ -33,9 +33,27 @@
     }
 
     .container {
-      width: 320px;
+      width: 340px;
       max-width: 100%;
       margin: 0 auto;
+    }
+
+    .panel {
+      background: rgba(255,255,255,0.92);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    }
+
+    input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-sizing: border-box;
+      font-size: 16px;
+      margin-bottom: 10px;
     }
 
     .btn {
@@ -74,9 +92,11 @@
       background: #8f1d13;
     }
 
-    .status-box {
-      margin-top: 20px;
-      background: rgba(255,255,255,0.9);
+    .status-box,
+    .info-box,
+    .error-box {
+      margin-top: 15px;
+      background: rgba(255,255,255,0.92);
       border-radius: 10px;
       padding: 12px;
       font-size: 14px;
@@ -85,14 +105,13 @@
       word-break: break-word;
     }
 
-    .info-box {
-      margin-top: 15px;
-      background: rgba(255,255,255,0.9);
-      border-radius: 10px;
-      padding: 12px;
-      font-size: 13px;
-      color: #374151;
-      line-height: 1.4;
+    .error-box {
+      color: #b42318;
+      display: none;
+    }
+
+    #appArea {
+      display: none;
     }
   </style>
 </head>
@@ -101,99 +120,24 @@
     <h1>Meine Helfer-Seiten</h1>
 
     <div class="container">
-      <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/Briefe/', 'briefe')">schreibe Briefe</button>
-      <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/Tarif/', 'tarif')">Checke den Tarif</button>
-      <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/Kosten/', 'kosten')">Zahlungs-Aufstellung</button>
-      <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/Gehalt/', 'gehalt')">berechne Dein Gehalt</button>
-      <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/Schicht/', 'schicht')">Abbau/Split/Tausch</button>
-      <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/Pflicht/', 'pflicht')">errechne Deine Präsenz</button>
-      <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/TA_SU/', 'ta_su')">TA-Suche</button>
 
-      <button class="btn btn-secondary" onclick="showSessionInfo()">aktive Freigaben anzeigen</button>
-      <button class="btn btn-danger" onclick="resetSession()">Freigaben zurücksetzen</button>
-
-      <div class="status-box" id="status">Keine aktiven Freigaben vorhanden.</div>
-
-      <div class="info-box">
-        Zugriff auf die Unterseiten soll nur über diese Hub-Seite erfolgen.<br>
-        Die Freigabe gilt pro Seite für 15 Minuten.
+      <div class="panel" id="loginPanel">
+        <input type="password" id="passwordInput" placeholder="Kennwort eingeben" />
+        <button class="btn" onclick="checkPassword()">Anmelden</button>
+        <div class="error-box" id="errorBox">Falsches Kennwort.</div>
       </div>
-    </div>
-  </div>
 
-  <script>
-    const ACCESS_KEY = "vf2026";
-    const SESSION_MINUTES = 15;
-    const STORAGE_KEY = "hubProtectedAccess";
+      <div id="appArea">
+        <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/Briefe/', 'briefe')">schreibe Briefe</button>
+        <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/Tarif/', 'tarif')">Checke den Tarif</button>
+        <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/Kosten/', 'kosten')">Zahlungs-Aufstellung</button>
+        <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/Gehalt/', 'gehalt')">berechne Dein Gehalt</button>
+        <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/Schicht/', 'schicht')">Abbau/Split/Tausch</button>
+        <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/Pflicht/', 'pflicht')">errechne Deine Präsenz</button>
+        <button class="btn" onclick="openProtectedPage('https://petervfd.github.io/TA_SU/', 'ta_su')">TA-Suche</button>
 
-    function loadAccessData() {
-      try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-      } catch (e) {
-        return {};
-      }
-    }
+        <button class="btn btn-secondary" onclick="showSessionInfo()">aktive Freigaben anzeigen</button>
+        <button class="btn btn-danger" onclick="resetSession()">Freigaben zurücksetzen</button>
 
-    function saveAccessData(data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }
+        <div class="status-box" id="status">Bereit.</div>
 
-    function cleanupExpired(data) {
-      const now = Date.now();
-      for (const key in data) {
-        if (!data[key] || data[key] < now) {
-          delete data[key];
-        }
-      }
-      return data;
-    }
-
-    function openProtectedPage(baseUrl, pageId) {
-      const now = Date.now();
-      const expires = now + SESSION_MINUTES * 60 * 1000;
-
-      let data = loadAccessData();
-      data = cleanupExpired(data);
-      data[pageId] = expires;
-      saveAccessData(data);
-
-      const url = new URL(baseUrl);
-      url.searchParams.set("access", ACCESS_KEY);
-      url.searchParams.set("page", pageId);
-
-      window.open(url.toString(), "_blank");
-      setStatus("Freigabe gesetzt für: " + pageId + " (" + SESSION_MINUTES + " Minuten)");
-    }
-
-    function resetSession() {
-      localStorage.removeItem(STORAGE_KEY);
-      setStatus("Alle Freigaben wurden zurückgesetzt.");
-    }
-
-    function showSessionInfo() {
-      let data = loadAccessData();
-      data = cleanupExpired(data);
-      saveAccessData(data);
-
-      const entries = Object.entries(data);
-      if (entries.length === 0) {
-        setStatus("Keine aktiven Freigaben vorhanden.");
-        return;
-      }
-
-      const lines = entries.map(([page, expires]) => {
-        const dt = new Date(expires);
-        return page + " bis " + dt.toLocaleTimeString("de-DE");
-      });
-
-      setStatus("Aktive Freigaben: " + lines.join(" | "));
-    }
-
-    function setStatus(text) {
-      document.getElementById("status").textContent = text;
-    }
-
-    showSessionInfo();
-  </script>
-</body>
-</html>
