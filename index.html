@@ -52,6 +52,19 @@ window.onload = function() {
 }
 </script>
 
+<script>
+const params = new URLSearchParams(window.location.search);
+const key = params.get("key");
+
+if (key === "vf2026") {
+    localStorage.setItem("allowed", "yes");
+}
+
+if (localStorage.getItem("allowed") !== "yes") {
+    document.body.innerHTML = "<h2>Zugriff nur über die Startseite</h2>";
+}
+</script>
+
 </head>
 
 <body>
