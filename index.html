@@ -120,7 +120,6 @@
     <h1>Meine Helfer-Seiten</h1>
 
     <div class="container">
-
       <div class="panel" id="loginPanel">
         <input type="password" id="passwordInput" placeholder="Kennwort eingeben" />
         <button class="btn" onclick="checkPassword()">Anmelden</button>
@@ -141,3 +140,165 @@
 
         <div class="status-box" id="status">Bereit.</div>
 
+        <div class="info-box">
+          Zugriff auf die Unterseiten nur nach Kennwort über diese Hauptseite.<br>
+          Die Anmeldung und Freigabe gelten jeweils 15 Minuten.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const HUB_PASSWORD = "1234"; // <<< HIER DEIN PASSWORT EINTRAGEN
+    const ACCESS_KEY = "vf2026";
+    const SESSION_MINUTES = 15;
+
+    // absichtlich neue Key-Namen, damit alte Browserwerte ignoriert werden
+    const STORAGE_KEY = "hubProtectedAccess_v3";
+    const LOGIN_KEY = "hubLoginUntil_v3";
+
+    function now() {
+      return Date.now();
+    }
+
+    function getLoginUntil() {
+      return parseInt(localStorage.getItem(LOGIN_KEY) || "0", 10);
+    }
+
+    function isLoggedIn() {
+      return getLoginUntil() > now();
+    }
+
+    function setLogin() {
+      const until = now() + SESSION_MINUTES * 60 * 1000;
+      localStorage.setItem(LOGIN_KEY, String(until));
+    }
+
+    function clearLogin() {
+      localStorage.removeItem(LOGIN_KEY);
+    }
+
+    function loadAccessData() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveAccessData(data) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function cleanupExpired(data) {
+      const current = now();
+      for (const key in data) {
+        if (!data[key] || data[key] < current) {
+          delete data[key];
+        }
+      }
+      return data;
+    }
+
+    function showApp() {
+      document.getElementById("loginPanel").style.display = "none";
+      document.getElementById("appArea").style.display = "block";
+      document.getElementById("errorBox").style.display = "none";
+    }
+
+    function showLogin() {
+      document.getElementById("loginPanel").style.display = "block";
+      document.getElementById("appArea").style.display = "none";
+    }
+
+    function setStatus(text) {
+      document.getElementById("status").textContent = text;
+    }
+
+    function checkPassword() {
+      const input = document.getElementById("passwordInput").value;
+      const errorBox = document.getElementById("errorBox");
+
+      if (input === HUB_PASSWORD) {
+        setLogin();
+        showApp();
+        setStatus("Kennwort korrekt. Zugriff freigegeben.");
+        errorBox.style.display = "none";
+      } else {
+        errorBox.style.display = "block";
+        setStatus("Anmeldung fehlgeschlagen.");
+      }
+    }
+
+    function openProtectedPage(baseUrl, pageId) {
+      if (!isLoggedIn()) {
+        clearLogin();
+        setStatus("Bitte zuerst Kennwort eingeben.");
+        showLogin();
+        return;
+      }
+
+      const expires = now() + SESSION_MINUTES * 60 * 1000;
+
+      let data = loadAccessData();
+      data = cleanupExpired(data);
+      data[pageId] = expires;
+      saveAccessData(data);
+
+      const url = new URL(baseUrl);
+      url.searchParams.set("access", ACCESS_KEY);
+      url.searchParams.set("page", pageId);
+
+      window.open(url.toString(), "_blank");
+      setStatus("Freigabe gesetzt für: " + pageId + " (" + SESSION_MINUTES + " Minuten)");
+    }
+
+    function resetSession() {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LOGIN_KEY);
+      document.getElementById("passwordInput").value = "";
+      setStatus("Kennwort-Status und Freigaben wurden zurückgesetzt.");
+      showLogin();
+    }
+
+    function showSessionInfo() {
+      const loginUntil = getLoginUntil();
+      let data = loadAccessData();
+      data = cleanupExpired(data);
+      saveAccessData(data);
+
+      const entries = Object.entries(data);
+      const loginText = loginUntil > now()
+        ? "Haupt-Anmeldung bis " + new Date(loginUntil).toLocaleTimeString("de-DE")
+        : "Keine aktive Haupt-Anmeldung";
+
+      if (entries.length === 0) {
+        setStatus(loginText + " | Keine aktiven Freigaben vorhanden.");
+        return;
+      }
+
+      const lines = entries.map(([page, expires]) => {
+        return page + " bis " + new Date(expires).toLocaleTimeString("de-DE");
+      });
+
+      setStatus(loginText + " | Aktive Freigaben: " + lines.join(" | "));
+    }
+
+    document.getElementById("passwordInput").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        checkPassword();
+      }
+    });
+
+    // Startzustand
+    if (isLoggedIn()) {
+      showApp();
+      showSessionInfo();
+    } else {
+      clearLogin();
+      showLogin();
+    }
+  </script>
+</body>
+</html>
+``
