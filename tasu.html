@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Excel-Suche Teams</title>
+
+  <script src="https://res.cdn.office.net/teams-js/2.29.0/js/MicrosoftTeams.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <style>
+    body{
+      font-family: Arial, sans-serif;
+      background:#f5f5f5;
+      margin:0;
+      padding:16px;
+      color:#222;
+    }
+    .box{
+      max-width:1000px;
+      margin:0 auto;
+      background:#fff;
+      border-radius:12px;
+      padding:16px;
+      box-shadow:0 4px 14px rgba(0,0,0,0.08);
+    }
+    h1{
+      margin:0 0 14px 0;
+      font-size:22px;
+    }
+    .row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+    input[type="file"],
+    input[type="text"],
+    textarea,
+    select{
+      padding:10px;
+      border:1px solid #ccc;
+      border-radius:8px;
+      font-size:14px;
+      box-sizing:border-box;
+    }
+    input[type="text"]{
+      flex:1;
+      min-width:240px;
+    }
+
+textarea{
+  width:100%;
+  height:280px;
+  resize:vertical;
+}
+
+    button{
+      padding:10px 14px;
+      border:none;
+      border-radius:8px;
+      background:#6264a7;
+      color:#fff;
+      font-weight:bold;
+      cursor:pointer;
+    }
+    button:hover{
+      background:#4f52a1;
+    }
+    .btn-secondary{
+      background:#666;
+    }
+    .btn-secondary:hover{
+      background:#4f4f4f;
+    }
+    .btn-green{
+      background:#008a5c;
+    }
+    .btn-green:hover{
+      background:#006e49;
+    }
+    .status{
+      margin:10px 0 14px 0;
+      padding:10px 12px;
+      border:1px solid #ddd;
+      border-radius:8px;
+      background:#fafafa;
+      min-height:22px;
+    }
+    .section{
+      border:1px solid #e2e2e2;
+      border-radius:10px;
+      padding:12px;
+      margin-bottom:12px;
+      background:#fcfcfc;
+    }
+    .section-title{
+      font-weight:bold;
+      margin-bottom:8px;
+    }
+    .small{
+      font-size:12px;
+      color:#666;
+    }
+    .codebox{
+      font-family:Consolas, monospace;
+      width:100%;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:8px;
+    }
+    th, td{
+      border-bottom:1px solid #eaeaea;
+      padding:8px;
+      text-align:left;
+      vertical-align:top;
+      font-size:14px;
+    }
+    th{
+      background:#f2f2f2;
+    }
+    mark{
+      background:#fff2a8;
+      padding:0 2px;
+    }
+
+    @media (max-width: 900px){
+      table, thead, tbody, tr, th, td{
+        display:block;
+        width:100%;
+      }
+      thead{ display:none; }
+      tr{
+        margin-bottom:10px;
+        border:1px solid #eee;
+        border-radius:8px;
+        overflow:hidden;
+      }
+      td::before{
+        display:block;
+        font-weight:bold;
+        margin-bottom:4px;
+        color:#444;
+      }
+      td:nth-child(1)::before { content:"Text"; }
+      td:nth-child(2)::before { content:"Blatt"; }
+      td:nth-child(3)::before { content:"Zelle"; }
+      td:nth-child(4)::before { content:"Aktion"; }
+    }
+  </style>
+</head>
+<body>
+<div class="box">
+  <h1>Excel-Suche Teams</h1>
+
+  <div class="row">
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+    <button onclick="loadExcel()">Datei laden</button>
+    <button class="btn-secondary" onclick="resetAll()">Reset</button>
+  </div>
+
+  <div class="row">
+    <input type="text" id="searchInput" placeholder="Suchbegriff eingeben ..." onkeydown="if(event.key==='Enter') searchData();">
+    <button onclick="searchData()">Suchen</button>
+  </div>
+
+  <div class="status" id="status">Bitte zuerst eine Excel-Datei auswählen.</div>
+
+  <div class="section">
+    <div class="section-title">Aktuelles Ziel</div>
+    <input type="text" id="targetOutput" class="codebox" readonly placeholder="Hier erscheint z. B. 'Tabelle1'!B25">
+    <div class="row" style="margin-top:10px;">
+      <button class="btn-green" onclick="copyCurrentTarget()">Ziel kopieren</button>
+    </div>
+    <div class="small" id="lastTargetInfo">Letztes Ziel: –</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Treffer</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Text</th>
+          <th>Blatt</th>
+          <th>Zelle</th>
+          <th>Aktion</th>
+        </tr>
+      </thead>
+      <tbody id="results">
+        <tr><td colspan="4" class="small">Noch keine Datei geladen.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Zusammenfassung</div>
+    <div class="row">
+      <select id="summaryLength">
+        <option value="kurz">Kurz</option>
+        <option value="mittel" selected>Mittel</option>
+        <option value="lang">Ausführlich</option>
+      </select>
+      <button onclick="createSummary()">Erstellen</button>
+      <button class="btn-green" onclick="copySummary()">Kopieren</button>
+    </div>
+    <textarea id="summaryOutput" placeholder="Hier erscheint die Zusammenfassung der Treffer."></textarea>
+  </div>
+</div>
+
+<script>
+let data = [];
+let results = [];
+let currentTarget = "";
+let currentFileName = "";
+
+window.addEventListener("DOMContentLoaded", async () => {
+  try{
+    if (window.microsoftTeams && microsoftTeams.app) {
+      await microsoftTeams.app.initialize();
+      setStatus("Teams-Tab bereit. Bitte Datei auswählen.");
+    } else {
+      setStatus("Bitte Datei auswählen.");
+    }
+  } catch(e){
+    setStatus("Bitte Datei auswählen.");
+  }
+});
+
+function loadExcel(){
+  const file = document.getElementById("fileInput").files[0];
+  if (!file){
+    setStatus("❌ Bitte zuerst eine Datei auswählen.");
+    return;
+  }
+
+  const reader = new FileReader();
+  currentFileName = file.name;
+  setStatus("⏳ Datei wird geladen ...");
+
+  reader.onload = function(event){
+    try{
+      const wb = XLSX.read(event.target.result, { type: "array" });
+      data = [];
+      results = [];
+      currentTarget = "";
+
+      document.getElementById("targetOutput").value = "";
+      document.getElementById("summaryOutput").value = "";
+      document.getElementById("lastTargetInfo").textContent = "Letztes Ziel: –";
+
+      wb.SheetNames.forEach(function(sheetName){
+        const sheet = wb.Sheets[sheetName];
+        const ref = sheet["!ref"];
+        if (!ref) return;
+
+        const range = XLSX.utils.decode_range(ref);
+
+        for (let r = range.s.r; r <= range.e.r; r++){
+          for (let c = range.s.c; c <= range.e.c; c++){
+            const cellAddr = XLSX.utils.encode_cell({ r:r, c:c });
+            const cell = sheet[cellAddr];
+            if (!cell) continue;
+
+            let value = "";
+            if (cell.w !== undefined && cell.w !== null && String(cell.w).trim() !== ""){
+              value = String(cell.w);
+            } else if (cell.v !== undefined && cell.v !== null && String(cell.v).trim() !== ""){
+              value = String(cell.v);
+            }
+
+            if (value.trim() !== ""){
+              data.push({
+                text: value.trim(),
+                sheet: sheetName,
+                cell: cellAddr
+              });
+            }
+          }
+        }
+      });
+
+      document.getElementById("results").innerHTML =
+        '<tr><td colspan="4" class="small">Datei geladen. Jetzt Suchbegriff eingeben.</td></tr>';
+
+      setStatus("✅ Datei geladen: " + escapeHtml(file.name) + " (" + data.length + " befüllte Zellen)");
+    } catch (e){
+      setStatus("❌ Fehler beim Lesen der Datei: " + escapeHtml(e.message));
+    }
+  };
+
+  reader.onerror = function(){
+    setStatus("❌ Datei konnte nicht gelesen werden.");
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+function searchData(){
+  const term = document.getElementById("searchInput").value.trim().toLowerCase();
+  const tbody = document.getElementById("results");
+  tbody.innerHTML = "";
+
+  document.getElementById("summaryOutput").value = "";
+
+  if (!data.length){
+    setStatus("❌ Bitte zuerst eine Excel-Datei laden.");
+    return;
+  }
+
+  if (!term){
+    setStatus("❌ Bitte Suchbegriff eingeben.");
+    tbody.innerHTML = '<tr><td colspan="4" class="small">Bitte Suchbegriff eingeben.</td></tr>';
+    results = [];
+    return;
+  }
+
+  results = data.filter(function(d){
+    return d.text.toLowerCase().includes(term);
+  });
+
+  if (!results.length){
+    tbody.innerHTML = '<tr><td colspan="4" class="small">Keine Treffer gefunden.</td></tr>';
+    setStatus("ℹ️ Keine Treffer gefunden.");
+    return;
+  }
+
+  results.slice(0, 200).forEach(function(r){
+    const pos = "'" + r.sheet.replace(/'/g, "''") + "'!" + r.cell;
+
+    const tr = document.createElement("tr");
+
+    const td1 = document.createElement("td");
+    td1.innerHTML = highlight(escapeHtml(r.text), term);
+
+    const td2 = document.createElement("td");
+    td2.textContent = r.sheet;
+
+    const td3 = document.createElement("td");
+    td3.textContent = r.cell;
+
+    const td4 = document.createElement("td");
+    const btnCopy = document.createElement("button");
+    btnCopy.textContent = "Ziel kopieren";
+    btnCopy.className = "btn-green";
+    btnCopy.addEventListener("click", function(){
+      setTarget(pos);
+    });
+
+    td4.appendChild(btnCopy);
+
+    tr.appendChild(td1);
+    tr.appendChild(td2);
+    tr.appendChild(td3);
+    tr.appendChild(td4);
+    tbody.appendChild(tr);
+  });
+
+  setStatus("✅ " + results.length + " Treffer gefunden.");
+}
+
+function setTarget(pos){
+  currentTarget = pos;
+
+  const out = document.getElementById("targetOutput");
+  out.value = pos;
+  out.focus();
+  out.select();
+
+  document.getElementById("lastTargetInfo").textContent = "Letztes Ziel: " + pos;
+
+  copySmart(
+    pos,
+    function(){
+      setStatus("✅ Ziel kopiert: " + escapeHtml(pos));
+    },
+    function(){
+      setStatus("⚠️ Kopieren nicht automatisch möglich. Ziel ist markiert → bitte Strg+C drücken.");
+    }
+  );
+}
+
+function copyCurrentTarget(){
+  if (!currentTarget){
+    setStatus("❌ Es ist noch kein Ziel vorhanden.");
+    return;
+  }
+
+  const out = document.getElementById("targetOutput");
+  out.focus();
+  out.select();
+
+  copySmart(
+    currentTarget,
+    function(){
+      setStatus("✅ Ziel kopiert: " + escapeHtml(currentTarget));
+    },
+    function(){
+      setStatus("⚠️ Kopieren nicht automatisch möglich. Ziel ist markiert → bitte Strg+C drücken.");
+    }
+  );
+}
+
+function createSummary(){
+  if (!results.length){
+    setStatus("❌ Bitte zuerst suchen.");
+    return;
+  }
+
+  const length = document.getElementById("summaryLength").value;
+  const summary = buildSummary(results, length);
+
+  const box = document.getElementById("summaryOutput");
+  box.value = summary;
+  box.focus();
+  box.select();
+
+  setStatus("✅ Zusammenfassung erstellt.");
+}
+
+function buildSummary(items, length){
+  const stopwords = new Set([
+    "und","oder","aber","doch","dass","der","die","das","dem","den","des",
+    "ein","eine","einer","einem","einen","ist","sind","war","waren","wird",
+    "werden","mit","ohne","für","von","vom","zum","zur","auf","aus","bei",
+    "nach","vor","über","unter","zwischen","durch","wegen","nicht","kein",
+    "keine","noch","schon","auch","nur","sehr","kann","konnte","können",
+    "muss","müssen","soll","sollen","wurde","wurden","hat","haben","wie",
+    "was","wer","wo","wann","warum","bitte"
+  ]);
+
+  const sheetCounts = {};
+  const keywords = {};
+  const examples = [];
+  const seen = new Set();
+
+  items.forEach(function(item){
+    sheetCounts[item.sheet] = (sheetCounts[item.sheet] || 0) + 1;
+
+    const clean = String(item.text || "").replace(/\s+/g, " ").trim();
+    if (clean && !seen.has(clean)){
+      seen.add(clean);
+      examples.push("[" + item.sheet + "!" + item.cell + "] " + clean);
+    }
+
+    clean.toLowerCase()
+      .replace(/[^a-zäöüß0-9\s\-]/gi, " ")
+      .split(/\s+/)
+      .forEach(function(word){
+        const w = word.trim();
+        if (!w || w.length < 4 || stopwords.has(w)) return;
+        keywords[w] = (keywords[w] || 0) + 1;
+      });
+  });
+
+  const topSheets = Object.entries(sheetCounts)
+    .sort(function(a,b){ return b[1] - a[1]; })
+    .slice(0, length === "kurz" ? 3 : length === "mittel" ? 5 : 8);
+
+  const topKeywords = Object.entries(keywords)
+    .sort(function(a,b){ return b[1] - a[1]; })
+    .slice(0, length === "kurz" ? 6 : length === "mittel" ? 10 : 15);
+
+  const exampleCount = length === "kurz" ? 3 : length === "mittel" ? 5 : 8;
+
+  let text = "";
+  text += "THEMEN-ZUSAMMENFASSUNG\n";
+  text += "======================\n";
+  text += "Datei: " + (currentFileName || "–") + "\n";
+  text += "Treffer: " + items.length + "\n\n";
+
+  text += "KURZFAZIT\n";
+  text += "---------\n";
+  text += "Es wurden " + items.length + " Treffer gefunden. Die meisten Treffer liegen in: ";
+  text += (topSheets.length ? topSheets.map(x => x[0] + " (" + x[1] + ")").join(", ") : "–");
+  text += ".\n\n";
+
+  text += "HÄUFIGE THEMEN / SCHLAGWÖRTER\n";
+  text += "-----------------------------\n";
+  if (topKeywords.length){
+    topKeywords.forEach(function(k){
+      text += "- " + k[0] + " (" + k[1] + ")\n";
+    });
+  } else {
+    text += "- Keine auffälligen Schlagwörter erkannt.\n";
+  }
+
+  text += "\nBEISPIELE\n";
+  text += "---------\n";
+  examples.slice(0, exampleCount).forEach(function(ex){
+    text += "- " + ex + "\n";
+  });
+
+  if (length !== "kurz"){
+    text += "\nEINSCHÄTZUNG\n";
+    text += "------------\n";
+    text += "Die Treffer zeigen wiederkehrende Themen und inhaltliche Häufungen. Ähnliche Einträge sollten fachlich zusammen geprüft werden.\n";
+  }
+
+  if (length === "lang"){
+    text += "\nNÄCHSTE SCHRITTE\n";
+    text += "----------------\n";
+    text += "- Auffällige Treffer prüfen\n";
+    text += "- Dubletten zusammenfassen\n";
+    text += "- Relevante Punkte weiter analysieren\n";
+  }
+
+  return text;
+}
+
+function copySummary(){
+  const box = document.getElementById("summaryOutput");
+  const text = box.value.trim();
+
+  if (!text){
+    setStatus("❌ Noch keine Zusammenfassung vorhanden.");
+    return;
+  }
+
+  box.focus();
+  box.select();
+
+  copySmart(
+    text,
+    function(){
+      setStatus("✅ Zusammenfassung kopiert.");
+    },
+    function(){
+      setStatus("⚠️ Kopieren nicht automatisch möglich. Feld ist markiert → bitte Strg+C drücken.");
+    }
+  );
+}
+
+function copySmart(text, onSuccess, onManual){
+  if (!text){
+    if (typeof onManual === "function") onManual();
+    return;
+  }
+
+  if (navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(function(){
+      if (typeof onSuccess === "function") onSuccess();
+    }).catch(function(){
+      if (copyLegacy(text)){
+        if (typeof onSuccess === "function") onSuccess();
+      } else {
+        if (typeof onManual === "function") onManual();
+      }
+    });
+  } else {
+    if (copyLegacy(text)){
+      if (typeof onSuccess === "function") onSuccess();
+    } else {
+      if (typeof onManual === "function") onManual();
+    }
+  }
+}
+
+function copyLegacy(text){
+  try{
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    ta.style.top = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return !!ok;
+  } catch(e){
+    return false;
+  }
+}
+
+function resetAll(){
+  document.getElementById("searchInput").value = "";
+  document.getElementById("targetOutput").value = "";
+  document.getElementById("summaryOutput").value = "";
+  document.getElementById("results").innerHTML =
+    data.length
+      ? '<tr><td colspan="4" class="small">Datei geladen. Jetzt Suchbegriff eingeben.</td></tr>'
+      : '<tr><td colspan="4" class="small">Noch keine Datei geladen.</td></tr>';
+
+  currentTarget = "";
+  results = [];
+  document.getElementById("lastTargetInfo").textContent = "Letztes Ziel: –";
+  setStatus(data.length ? "Bereit." : "Bitte zuerst eine Excel-Datei auswählen.");
+}
+
+function setStatus(msg){
+  document.getElementById("status").innerHTML = msg;
+}
+
+function escapeHtml(str){
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function highlight(text, term){
+  if (!term) return text;
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp("(" + escaped + ")", "gi");
+  return text.replace(re, "<mark>$1</mark>");
+}
+</script>
+</body>
+</html>
